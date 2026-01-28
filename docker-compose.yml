@@ -1,0 +1,51 @@
+services:
+
+  # Backend API
+  backend:
+    build:
+      context: ./ai-story-teller-backend-python
+      dockerfile: Dockerfile
+    container_name: aistoryteller-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./ai-story-teller-backend-python/.env
+
+    volumes:
+      - ./ai-story-teller-backend-python/chroma_db:/app/chroma_db
+      - ./ai-story-teller-backend-python/logs:/app/logs
+
+    networks:
+      - aistoryteller-network
+    healthcheck:
+      test: [ "CMD", "curl", "--fail", "http://localhost:8000/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend
+  frontend:
+    build:
+      context: ./ai-story-teller-frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_BACKEND_URL=http://localhost:8000
+    container_name: aistoryteller-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - aistoryteller-network
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/" ]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+networks:
+  aistoryteller-network:
+    driver: bridge
